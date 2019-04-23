@@ -28,3 +28,4 @@ stamp-h*
 ungifsicle-*.rpm
 ungifsicle-*.tar.gz
 compile
+/gifsicle-react/public/

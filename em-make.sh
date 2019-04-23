@@ -14,6 +14,6 @@ sudo docker run --rm -v $(pwd):/src trzeci/emscripten emcc \
     src/gifsicle.o \
     src/gifwrite.o \
     -s ERROR_ON_UNDEFINED_SYMBOLS=0 \
-    -o gifsicle.html
+    -o gifsicle-react/src/gifsicle.html
 
 
