@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+HTML=stackoverflow/src/stackoverflow.html
+JS=stackoverflow/src/stackoverflow.js
 sudo docker run --rm -v $(pwd):/src trzeci/emscripten emmake make
 sudo docker run --rm -v $(pwd):/src trzeci/emscripten emcc \
     src/clp.o \
@@ -13,7 +15,12 @@ sudo docker run --rm -v $(pwd):/src trzeci/emscripten emcc \
 	src/xform.o \
     src/gifsicle.o \
     src/gifwrite.o \
+    -s MODULARIZE=1 \
+    -s EXPORT_NAME=Stackoverflow \
     -s ERROR_ON_UNDEFINED_SYMBOLS=0 \
-    -o gifsicle-react/src/gifsicle.html
+    -o ${HTML} \
+    # -o gifsicle-react/src/gifsicle.html \
+
+sed -i.old '1s;^;\/* eslint-disable *\/;' ${JS}
 
 
