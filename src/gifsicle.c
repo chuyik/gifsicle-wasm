@@ -1449,7 +1449,6 @@ error:
 int
 main(int argc, char *argv[])
 {
-  printf("ICECRAEMMMMM\n");
   /* Check SIZEOF constants (useful for Windows). If these assertions fail,
      you've used the wrong Makefile. You should've used Makefile.w32 for
      32-bit Windows and Makefile.w64 for 64-bit Windows. */
