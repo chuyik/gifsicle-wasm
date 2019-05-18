@@ -27,8 +27,9 @@ sudo docker run --rm -v $(pwd):/src trzeci/emscripten emcc \
     -o ${HTML} \
 
 cp ${WASM} ${WASM_PUBLIC}
-sed -i.old '1s;^;\/* eslint-disable *\/;' ${JS}
-sed -i.old "s|$WASM_FILENAME|/$WASM_FILENAME|" ${JS}
-sed -i.old "s|$WASM_LOOKUP|// $WASM_LOOKUP|" ${JS}
+gsed -i.old '1s;^;\/* eslint-disable */\n&;' ${JS}
+gsed -i.old '2s;^;\// @ts-ignore;' ${JS}
+gsed -i.old "s|$WASM_FILENAME|/$WASM_FILENAME|" ${JS}
+gsed -i.old "s|$WASM_LOOKUP|// $WASM_LOOKUP|" ${JS}
 
 
