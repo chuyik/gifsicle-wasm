@@ -31,3 +31,14 @@
     transform: rotate(360deg);
   }
 }
+
+.image-box {
+  border: black thin;
+}
+
+.commands {
+  display: flex;
+}
+.commands > * {
+  flex-grow: 1;
+}
