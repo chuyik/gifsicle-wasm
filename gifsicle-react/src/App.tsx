@@ -242,7 +242,8 @@ class App extends Component {
         (async () => {
             // @ts-ignore
             bufferedStdErr$.subscribe(errorMessage => this.wrapSetState({errorMessages: this.state.errorMessages.concat([errorMessage])}));
-            const r = await (await fetch('/An_example_animation_made_with_Pivot.gif')).arrayBuffer();
+            const resp  = await fetch('/An_example_animation_made_with_Pivot.gif');
+            const r = await resp.arrayBuffer();
             debugger;
             const inputBase64 = await this.bytesToBase64(new Uint8Array(r));
             const name = 'An_example_animation_made_with_Pivot.gif';
