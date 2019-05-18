@@ -26,10 +26,7 @@ stamp-h*
 ungifsicle-*.rpm
 ungifsicle-*.tar.gz
 compile
-.gitignore
-README.md
 package-lock.json
-package.json
 public/
 .idea/
 a.out
@@ -38,10 +35,5 @@ a.out.wasm
 clp.html
 clp.js
 clp.wasm
-gifsicle-react/src/An_example_animation_made_with_Pivot.gif
-gifsicle.html
 gifsicle.js
-gifsicle.wasm
 stackoverflow/
-config/
-scripts/
