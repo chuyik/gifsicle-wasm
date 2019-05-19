@@ -174,6 +174,7 @@ class AppState {
     command: any;
     rotate$: any;
     reflect$: any;
+    commandInterface$: any;
 }
 
 class AppState$ {
@@ -185,7 +186,16 @@ class AppState$ {
     reflectAppendFrameSet$ = (obs$: KeyValPair) =>
         obs$.reflect$.pipe(map(v => v ? [v, '#0-'] : ['']));
     autoRecompute$ = new BehaviorSubject(true);
-    commandInterface$ = (obs$: KeyValPair) => combineLatest(obs$.rotateAppendFrameSet$, obs$.reflectAppendFrameSet$);
+    requestCropRecompute$ = new BehaviorSubject([null, null, null, null]);
+    // @ts-ignore
+    cropCommand$ = (obs$: KeyValPair) => obs$.requestCropRecompute$.pipe(debounceTime(500), map(([xLeft, xRight, yTop, yBottom]) => {
+        if (!xLeft) return '';
+        const start = {x: getElPos(xLeft).x, y: getElPos(yTop).y};
+        const end = {x: getElPos(xRight).x, y: getElPos(yBottom).y};
+        const relativeEnd = {x: end.x - start.x, y: end.y - start.y};
+        return `--crop ${start.x},${start.y}-${relativeEnd.x},${relativeEnd.y} #0-`
+    }));
+    commandInterface$ = (obs$: KeyValPair) => combineLatest(obs$.rotateAppendFrameSet$, obs$.cropCommand$, obs$.reflectAppendFrameSet$);
     debouncedCommand$ = (obs$: KeyValPair) =>
         combineLatest(obs$.commandPrefix$, obs$.commandInterface$, obs$.commandText$, obs$.commandPostfix$).pipe(debounceTime(500))
             .pipe(map(([prefix, commandInterface, command, postfix]) => {
@@ -273,6 +283,8 @@ class App extends Component {
 
             if (this.dragging) {
                 e.preventDefault();
+                // @ts-ignore
+                this.state$.requestCropRecompute$.next([this.cropXLeft, this.cropXRight, this.cropYTop, this.cropYBottom]);
                 switch (this.dragging) {
                     case this.cropXLeft.current:
                         if (!this.cropXLeft.current) break;
@@ -295,7 +307,7 @@ class App extends Component {
                         console.log();
 
                 }
-                if (this.dragging.classList.contains('x')) {
+/*                if (this.dragging.classList.contains('x')) {
                     const leftS = (this.dragging.style.left || '0').replace('px', '');
                     const leftN = parseInt(leftS, 10);
                     // Am I allowed to do this?
@@ -310,11 +322,10 @@ class App extends Component {
                 } else {
                     debugger;
                     console.log();
-                }
+                }*/
             }
         }
     }
-
 
     // @ts-ignore
     wrapSetState(o) {
@@ -496,13 +507,16 @@ class App extends Component {
                     <input value={this.state.commandPrefix.join(' ')} readOnly={true}/>
                     <input onChange={e => this.handleCommandChange(e.target.value)}
                            value={this.state.commandText}/>
+                    <input value={this.state.commandInterface$ && this.state.commandInterface$.join(' ')}>
+
+                    </input>
                     <input value={this.state.commandPostfix.join(' ')} readOnly={true}/>
                 </div>
                 <div style={{display: 'flex'}}>
                     <div>
                         {this.state.inputImages.map(i => <Paper className={"image-box"} key={i.name}>
                             <div style={{position: 'relative'}}>
-                                <div> {i.size.x}px, {i.size.y}px </div>
+                                <div> {i.size.x}px, {i.size.y}px</div>
                                 <div style={{
                                     position: 'absolute',
                                     minHeight: '100%',
@@ -546,7 +560,7 @@ class App extends Component {
                     </div>
                     <div>
                         {this.state.outputImages.map(i => <Paper className={"image-box"} key={i.name}>
-                            <div> {i.size.x}px, {i.size.y}px </div>
+                            <div> {i.size.x}px, {i.size.y}px</div>
                             <img src={i.base64Data}/>
                         </Paper>)}
                     </div>
