@@ -6,6 +6,7 @@ import './App.css';
 import Gifsicle from './gifsicle.js';
 import Paper from '@material-ui/core/Paper';
 import Button from '@material-ui/core/Button';
+import {MenuItem, Select} from "@material-ui/core";
 
 const stdOut$ = new Subject();
 const stdErr$ = new Subject();
@@ -68,7 +69,7 @@ function makeObs(component: KeyValPair, obs$: KeyValPair): AppState$ {
         // @ts-ignore
         component.state$[k + '$'].subscribe(v => {
             component.setState({
-                k: v
+                [k]: v
             });
         });
     });
@@ -80,10 +81,11 @@ function makeObs(component: KeyValPair, obs$: KeyValPair): AppState$ {
         component.state[k] = null;
         if (typeof o === "function") {
             deferredObs.push([k, o]);
-        }
-        else {
+        } else {
             // I think this lines makes it so that this function can only run the constructor before the state has a strict set of properties
             //  I think I'm consciously not using the wrapSetState here
+            // @ts-ignore
+            component.state$[k] = o;
             // @ts-ignore
             o.subscribe(v => {
                 component.setState({
@@ -108,7 +110,12 @@ function makeObs(component: KeyValPair, obs$: KeyValPair): AppState$ {
     return component.state$;
 }
 
-function enumerable(seq: Array<string>, sub: BehaviorSubject<any>) {
+class SeqBehaviorSubject<T> extends BehaviorSubject<T> {
+    constructor(initVal: T, public seq: Array<T>) {
+        super(initVal);
+    }
+}
+function enumerable<T>(seq: Array<T>, sub: BehaviorSubject<T>): SeqBehaviorSubject<T> {
     // @ts-ignore
     sub.nextEnum = () => {
         let i = seq.indexOf(sub.getValue());
@@ -121,7 +128,8 @@ function enumerable(seq: Array<string>, sub: BehaviorSubject<any>) {
         return seq[i];
     };
     // @ts-ignore
-    sub.enum = seq;
+    sub.seq = seq;
+    // @ts-ignore
     return sub;
 
     /*        Reflect.deleteProperty(target, key);
@@ -159,22 +167,26 @@ class AppState {
     commandPrefix = [];
     commandPostfix = [];
     frames = [];
-    rotate$: any;
-    reflect$: any;
     command: any;
+    rotate$: any;
 }
 
 class AppState$ {
+    rotate$ = enumerable<string>(['', '--rotate-90', '--rotate-180', '--rotate-270'], new BehaviorSubject('')); // 0 or 90 or 180
     // @ts-ignore
-    rotate$ = enumerable(['', '--rotate-90', '--rotate-180', '--rotate-270'], new BehaviorSubject('')); // 0 or 90 or 180
-    // @ts-ignore
-    reflect$ = enumerable(['', '--flip-horizontal', '--flip-vertical'], new BehaviorSubject('')); // reflectOrNo
+    rotateAppendFrameSet$ = (obs$: KeyValPair) =>
+        obs$.rotate$.pipe(map(v => v ? [v, '#0-'] : ['']));
+    reflect$ = enumerable<string>(['', '--flip-horizontal', '--flip-vertical'], new BehaviorSubject('')); // reflectOrNo
+    reflectAppendFrameSet$ = (obs$: KeyValPair) =>
+        obs$.reflect$.pipe(map(v => v ? [v, '#0-'] : ['']));
     autoRecompute$ = new BehaviorSubject(true);
+    commandInterface$ = (obs$: KeyValPair) => combineLatest(obs$.rotateAppendFrameSet$, obs$.reflectAppendFrameSet$);
     debouncedCommand$ = (obs$: KeyValPair) =>
-        combineLatest(obs$.commandPrefix$, obs$.commandText$, obs$.commandPostfix$).pipe(debounceTime(500))
-            .pipe(map(([prefix, command, postfix]) => {
+        combineLatest(obs$.commandPrefix$, obs$.commandInterface$,  obs$.commandText$, obs$.commandPostfix$).pipe(debounceTime(500))
+            .pipe(map(([prefix, commandInterface, command, postfix]) => {
                 // @ts-ignore
-                return prefix.concat(command.split(' ')).concat(postfix)
+                const v = prefix.concat(...commandInterface, command.split(' '), postfix);
+                return v;
             }))
 }
 
@@ -186,6 +198,8 @@ class App extends Component {
         super(props);
 
         this.state$ = makeObs(this, new AppState$());
+        console.log(this.state$);
+
 
         // @ts-ignore
         this.handleCommandChange = s => this.wrapSetState({commandText: s});
@@ -250,7 +264,7 @@ class App extends Component {
         (async () => {
             // @ts-ignore
             bufferedStdErr$.subscribe(errorMessage => this.wrapSetState({errorMessages: this.state.errorMessages.concat([errorMessage])}));
-            const resp  = await fetch('/An_example_animation_made_with_Pivot.gif');
+            const resp = await fetch('/An_example_animation_made_with_Pivot.gif');
             const r = await resp.arrayBuffer();
             const inputBase64 = await this.bytesToBase64(new Uint8Array(r));
             const name = 'An_example_animation_made_with_Pivot.gif';
@@ -332,24 +346,22 @@ class App extends Component {
 
     render() {
         // @ts-ignore
-        // @ts-ignore
         return (
             <div className="App">
                 <div>
-                    <Button>
-                        <div>{this.state.rotate$}</div>
-                    </Button>
-                    <Button>
-                        <div>{this.state.reflect$}</div>
-                    </Button>
+                    <Select
+                        value={this.state.rotate$}
+                        onChange={v => this.state$.rotate$.next(v.target.value)}
+                        inputProps={{
+                            name: 'rotate',
+                            id: 'rotate',
+                        }}
+                    >
+                        {this.state$.rotate$.seq.map(v => <MenuItem key={v} value={v}>{v}</MenuItem>)}
+                    </Select>
                 </div>
-                <div>
-                    {this.state.debug}
-                </div>
-                <div>{
-                    // @ts-ignore
-                    this.state.errorMessages.map(arr => <div>{String.fromCharCode.apply(String, arr)}</div>)
-                }
+                <div>{this.state.debug}</div>
+                <div>{this.state.errorMessages.length && this.state.errorMessages.slice(-1).map(arr => <div>{String.fromCharCode.apply(String, Array.from(arr))}</div>)}
                 </div>
                 <div className={"commands"}>
                     <input value={this.state.commandPrefix.join(' ')} readOnly={true}/>

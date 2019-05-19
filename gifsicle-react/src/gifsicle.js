@@ -100,7 +100,6 @@ Module["preRun"] = function () {
         if (file["name"].match(/\//)) {
             throw new Error("Bad file name");
         }
-        debugger;
         var fd = FS.open(file["name"], "w+");
         var data = __ffmpegjs_toU8(file["data"]);
         FS.write(fd, data, 0, data.length);
