@@ -190,6 +190,7 @@ class AppState$ {
     // @ts-ignore
     cropCommand$ = (obs$: KeyValPair) => obs$.requestCropRecompute$.pipe(debounceTime(500), map(([xLeft, xRight, yTop, yBottom]) => {
         if (!xLeft) return '';
+        debugger;
         const start = {x: getElPos(xLeft).x, y: getElPos(yTop).y};
         const end = {x: getElPos(xRight).x, y: getElPos(yBottom).y};
         const relativeEnd = {x: end.x - start.x, y: end.y - start.y};
@@ -284,7 +285,7 @@ class App extends Component {
             if (this.dragging) {
                 e.preventDefault();
                 // @ts-ignore
-                this.state$.requestCropRecompute$.next([this.cropXLeft, this.cropXRight, this.cropYTop, this.cropYBottom]);
+                this.state$.requestCropRecompute$.next([this.cropXLeft.current, this.cropXRight.current, this.cropYTop.current, this.cropYBottom.current]);
                 switch (this.dragging) {
                     case this.cropXLeft.current:
                         if (!this.cropXLeft.current) break;
