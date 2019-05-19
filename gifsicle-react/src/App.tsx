@@ -115,6 +115,7 @@ class SeqBehaviorSubject<T> extends BehaviorSubject<T> {
         super(initVal);
     }
 }
+
 function enumerable<T>(seq: Array<T>, sub: BehaviorSubject<T>): SeqBehaviorSubject<T> {
     // @ts-ignore
     sub.nextEnum = () => {
@@ -156,6 +157,9 @@ interface gImage {
     name: string;
     data: Uint8Array;
     base64Data: string;
+    cropX: number;
+    cropY: number;
+    size: Point;
 }
 
 class AppState {
@@ -169,6 +173,7 @@ class AppState {
     frames = [];
     command: any;
     rotate$: any;
+    reflect$: any;
 }
 
 class AppState$ {
@@ -182,7 +187,7 @@ class AppState$ {
     autoRecompute$ = new BehaviorSubject(true);
     commandInterface$ = (obs$: KeyValPair) => combineLatest(obs$.rotateAppendFrameSet$, obs$.reflectAppendFrameSet$);
     debouncedCommand$ = (obs$: KeyValPair) =>
-        combineLatest(obs$.commandPrefix$, obs$.commandInterface$,  obs$.commandText$, obs$.commandPostfix$).pipe(debounceTime(500))
+        combineLatest(obs$.commandPrefix$, obs$.commandInterface$, obs$.commandText$, obs$.commandPostfix$).pipe(debounceTime(500))
             .pipe(map(([prefix, commandInterface, command, postfix]) => {
                 // @ts-ignore
                 const v = prefix.concat(...commandInterface, command.split(' '), postfix);
@@ -190,23 +195,126 @@ class AppState$ {
             }))
 }
 
+interface Point {
+    x: number;
+    y: number;
+}
+
+function getImageDimensions(base64: string): Promise<Point> {
+    return new Promise((resolve, reject) => {
+        const i = new Image();
+        i.onload = () => {
+            resolve({x: i.naturalWidth, y: i.naturalHeight})
+        };
+        i.src = base64;
+    });
+}
+
+function getPxInt(str: string | null): number {
+    const l = (str || '0').replace('px', '');
+    return parseInt(l, 10);
+}
+
+function getElPos(el: HTMLElement): Point {
+    const x = getPxInt(el.style.left) - getPxInt(el.style.right);
+    const y = getPxInt(el.style.top) - getPxInt(el.style.bottom);
+    return {x, y}
+}
+
+function addToPix(px: string | null, i: number): string {
+    const n = getPxInt(px);
+    return n + i + 'px'
+}
+
 class App extends Component {
     state = new AppState();
     state$: AppState$;
+
+    dragging: HTMLDivElement | undefined;
+    private readonly cropXLeft: React.RefObject<HTMLDivElement>;
+    private readonly cropXRight: React.RefObject<HTMLDivElement>;
+    private readonly cropYTop: React.RefObject<HTMLDivElement>;
+    private readonly cropYBottom: React.RefObject<HTMLDivElement>;
 
     constructor(props: KeyValPair) {
         super(props);
 
         this.state$ = makeObs(this, new AppState$());
-        console.log(this.state$);
 
+        this.cropXLeft = React.createRef();
+        this.cropXRight = React.createRef();
+        this.cropYTop = React.createRef();
+        this.cropYBottom = React.createRef();
 
         // @ts-ignore
         this.handleCommandChange = s => this.wrapSetState({commandText: s});
 
         // @ts-ignore
         this.state$.debouncedCommand$.subscribe(commands => this.go(commands.filter(v => v)));
+
+        document.onmousedown = e => {
+            // @ts-ignore
+            const t: HTMLDivElement = e.target;
+            if (t.classList.contains('crop-slider')) {
+                this.dragging = t;
+            }
+        };
+        document.onmouseup = e => {
+            debugger;
+            console.log();
+            this.dragging = undefined;
+            if (this.dragging) {
+                this.dragging = undefined;
+            }
+        };
+        document.onmousemove = e => {
+            const xTransform = e.movementX;
+            const yTransform = e.movementY;
+
+            if (this.dragging) {
+                e.preventDefault();
+                switch (this.dragging) {
+                    case this.cropXLeft.current:
+                        if (!this.cropXLeft.current) break;
+                        this.cropXLeft.current.style.left = addToPix(this.cropXLeft.current.style.left, xTransform);
+                        break;
+                    case this.cropXRight.current:
+                        if (!this.cropXRight.current) break;
+                        this.cropXRight.current.style.left = addToPix(this.cropXRight.current.style.left, xTransform);
+                        break;
+                    case this.cropYTop.current:
+                        if (!this.cropYTop.current) break;
+                        this.cropYTop.current.style.top = addToPix(this.cropYTop.current.style.top, yTransform);
+                        break;
+                    case this.cropYBottom.current:
+                        if (!this.cropYBottom.current) break;
+                        this.cropYBottom.current.style.top = addToPix(this.cropYBottom.current.style.top, yTransform);
+                        break;
+                    default:
+                        debugger;
+                        console.log();
+
+                }
+                if (this.dragging.classList.contains('x')) {
+                    const leftS = (this.dragging.style.left || '0').replace('px', '');
+                    const leftN = parseInt(leftS, 10);
+                    // Am I allowed to do this?
+                    const pos = leftN + xTransform;
+                    this.dragging.style.left = pos + 'px';
+                } else if (this.dragging.classList.contains('y')) {
+                    const topS = (this.dragging.style.top || '0').replace('px', '');
+                    const topN = parseInt(topS, 10);
+                    // Am I allowed to do this?
+                    const pos = topN + yTransform;
+                    this.dragging.style.top = pos + 'px';
+                } else {
+                    debugger;
+                    console.log();
+                }
+            }
+        }
     }
+
 
     // @ts-ignore
     wrapSetState(o) {
@@ -220,8 +328,7 @@ class App extends Component {
         this.setState(o);
     }
 
-    // @ts-ignore
-    bytesToBase64(b) {
+    bytesToBase64(b: Uint8Array): Promise<string> {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
             reader.addEventListener("load", function () {
@@ -253,6 +360,7 @@ class App extends Component {
                 for (let i = 0; i < finishedFiles.length; i++) {
                     const finishedFile = finishedFiles[i];
                     finishedFile.base64Data = await this.bytesToBase64(finishedFile.data);
+                    finishedFile.size = await getImageDimensions(finishedFile.base64Data);
                 }
                 resolve(finishedFiles);
             };
@@ -261,6 +369,12 @@ class App extends Component {
     }
 
     componentDidMount() {
+        // @ts-ignore
+        function addListener(k, e) {
+            //   e.
+        }
+
+        // this.cropXLeft.current.
         (async () => {
             // @ts-ignore
             bufferedStdErr$.subscribe(errorMessage => this.wrapSetState({errorMessages: this.state.errorMessages.concat([errorMessage])}));
@@ -269,10 +383,14 @@ class App extends Component {
             const inputBase64 = await this.bytesToBase64(new Uint8Array(r));
             const name = 'An_example_animation_made_with_Pivot.gif';
             this.wrapSetState({
-                inputImages: [{name, data: new Uint8Array(r), base64Data: inputBase64}],
+                inputImages: [{
+                    name,
+                    data: new Uint8Array(r),
+                    base64Data: inputBase64,
+                    size: await getImageDimensions(inputBase64)
+                }],
                 commandPrefix: ['-i', name],
                 commandPostfix: ['-o', 'o_' + name]
-
             });
             await sleep(1000);
 
@@ -291,7 +409,7 @@ class App extends Component {
     }
 
     // @ts-ignore
-    readFile(file) {
+    readFile(file): Promise<Uint8Array> {
         return new Promise((resolve, reject) => {
             const r = new FileReader();
             r.onload = e => {
@@ -350,6 +468,16 @@ class App extends Component {
             <div className="App">
                 <div>
                     <Select
+                        value={this.state.reflect$}
+                        onChange={v => this.state$.reflect$.next(v.target.value)}
+                        inputProps={{
+                            name: 'reflect',
+                            id: 'reflect',
+                        }}
+                    >
+                        {this.state$.reflect$.seq.map(v => <MenuItem key={v} value={v}>{v}</MenuItem>)}
+                    </Select>
+                    <Select
                         value={this.state.rotate$}
                         onChange={v => this.state$.rotate$.next(v.target.value)}
                         inputProps={{
@@ -361,7 +489,8 @@ class App extends Component {
                     </Select>
                 </div>
                 <div>{this.state.debug}</div>
-                <div>{this.state.errorMessages.length && this.state.errorMessages.slice(-1).map(arr => <div>{String.fromCharCode.apply(String, Array.from(arr))}</div>)}
+                <div>{this.state.errorMessages.length && this.state.errorMessages.slice(-1).map(arr =>
+                    <div>{String.fromCharCode.apply(String, Array.from(arr))}</div>)}
                 </div>
                 <div className={"commands"}>
                     <input value={this.state.commandPrefix.join(' ')} readOnly={true}/>
@@ -371,19 +500,53 @@ class App extends Component {
                 </div>
                 <div style={{display: 'flex'}}>
                     <div>
-                        <div>Input</div>
                         {this.state.inputImages.map(i => <Paper className={"image-box"} key={i.name}>
-                            <img src={i.base64Data}/>
+                            <div style={{position: 'relative'}}>
+                                <div> {i.size.x}px, {i.size.y}px </div>
+                                <div style={{
+                                    position: 'absolute',
+                                    minHeight: '100%',
+                                    width: '5px',
+                                    backgroundColor: 'black'
+                                }} className={'crop-slider x'}
+                                     ref={this.cropXLeft}
+                                >
+                                </div>
+                                <div style={{
+                                    position: 'absolute',
+                                    right: 0,
+                                    minHeight: '100%',
+                                    width: '5px',
+                                    backgroundColor: 'black'
+                                }} className={'crop-slider x'} ref={this.cropXRight}>
+                                </div>
+                                <div style={{
+                                    position: 'absolute',
+                                    minWidth: '100%',
+                                    height: '5px',
+                                    backgroundColor: 'black'
+                                }} className={'crop-slider y'} ref={this.cropYTop}>
+                                </div>
+                                <div style={{
+                                    position: 'absolute',
+                                    minWidth: '100%',
+                                    height: '5px',
+                                    backgroundColor: 'black',
+                                    bottom: '0px'
+                                }} className={'crop-slider y'} ref={this.cropYBottom}>
+                                </div>
+                                <img
+                                    src={i.base64Data}
+                                />
+                            </div>
                         </Paper>)}
                         <Paper>
-                            <div style={{minHeight: '50px'}} onDrop={e => this.handleDrop(e)}
-                                 onDragOver={e => this.handleDragOver(e)}>Drop
-                            </div>
+                            <div style={{minHeight: '50px'}}>Drop</div>
                         </Paper>
                     </div>
                     <div>
-                        <div>Output</div>
                         {this.state.outputImages.map(i => <Paper className={"image-box"} key={i.name}>
+                            <div> {i.size.x}px, {i.size.y}px </div>
                             <img src={i.base64Data}/>
                         </Paper>)}
                     </div>
