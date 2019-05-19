@@ -96,9 +96,11 @@ Module["preRun"] = function () {
     FS.chdir("/work");
 
     (__ffmpegjs_opts["MEMFS"] || []).forEach(function (file) {
+        console.log(file);
         if (file["name"].match(/\//)) {
             throw new Error("Bad file name");
         }
+        debugger;
         var fd = FS.open(file["name"], "w+");
         var data = __ffmpegjs_toU8(file["data"]);
         FS.write(fd, data, 0, data.length);

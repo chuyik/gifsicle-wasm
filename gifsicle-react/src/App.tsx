@@ -47,7 +47,7 @@ interface KeyValPair {
     [key: string]: any
 }
 
-function makeObs(component: KeyValPair, obs$: KeyValPair): void {
+function makeObs(component: KeyValPair, obs$: KeyValPair): AppState$ {
     // Some observables will depend on others
     // @ts-ignore
     const deferredObs = [];
@@ -77,9 +77,12 @@ function makeObs(component: KeyValPair, obs$: KeyValPair): void {
         if (!k.endsWith('$')) {
             throw new Error("Please make your observables end in $!")
         }
+        component.state[k] = null;
         if (typeof o === "function") {
             deferredObs.push([k, o]);
-        } else {
+        }
+        else {
+            // I think this lines makes it so that this function can only run the constructor before the state has a strict set of properties
             //  I think I'm consciously not using the wrapSetState here
             // @ts-ignore
             o.subscribe(v => {
@@ -98,10 +101,11 @@ function makeObs(component: KeyValPair, obs$: KeyValPair): void {
         component.state$[k].subscribe(v => {
             //  I think I'm consciously not using the wrapSetState here
             component.setState({
-                k: v
+                [k]: v
             })
         })
     });
+    return component.state$;
 }
 
 function enumerable(seq: Array<string>, sub: BehaviorSubject<any>) {
@@ -176,14 +180,18 @@ class AppState$ {
 
 class App extends Component {
     state = new AppState();
+    state$: AppState$;
 
     constructor(props: KeyValPair) {
         super(props);
 
-        makeObs(this, new AppState$());
+        this.state$ = makeObs(this, new AppState$());
 
         // @ts-ignore
-        this.handleCommandChange = s => this.wrapSetState({commandText: s})
+        this.handleCommandChange = s => this.wrapSetState({commandText: s});
+
+        // @ts-ignore
+        this.state$.debouncedCommand$.subscribe(commands => this.go(commands.filter(v => v)));
     }
 
     // @ts-ignore
@@ -244,10 +252,8 @@ class App extends Component {
             bufferedStdErr$.subscribe(errorMessage => this.wrapSetState({errorMessages: this.state.errorMessages.concat([errorMessage])}));
             const resp  = await fetch('/An_example_animation_made_with_Pivot.gif');
             const r = await resp.arrayBuffer();
-            debugger;
             const inputBase64 = await this.bytesToBase64(new Uint8Array(r));
             const name = 'An_example_animation_made_with_Pivot.gif';
-            debugger;
             this.wrapSetState({
                 inputImages: [{name, data: new Uint8Array(r), base64Data: inputBase64}],
                 commandPrefix: ['-i', name],
@@ -256,16 +262,15 @@ class App extends Component {
             });
             await sleep(1000);
 
+            // Falsey arguments will give you a bad time
             // @ts-ignore
-            this.go(this.state$.debouncedCommand$);
+            this.go(this.state.debouncedCommand$.filter(v => v));
         })();
     }
 
     // @ts-ignore
     async go(c) {
-        const outputFiles = await this.execGifsicle(this.state.inputImages,
-            c
-        );
+        const outputFiles = await this.execGifsicle(this.state.inputImages, c);
         this.wrapSetState({
             outputImages: outputFiles
         })
