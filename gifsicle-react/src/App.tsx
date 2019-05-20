@@ -7,6 +7,7 @@ import Gifsicle from './gifsicle.js';
 import Paper from '@material-ui/core/Paper';
 import Button from '@material-ui/core/Button';
 import {MenuItem, Select} from "@material-ui/core";
+import 'roboto-fontface/css/roboto/roboto-fontface.css';
 
 const stdOut$ = new Subject();
 const stdErr$ = new Subject();
@@ -227,6 +228,9 @@ function getPxInt(str: string | null): number {
 }
 
 function getElPos(el: HTMLElement): Point {
+    // Top seems to take precedence over bottom
+
+    debugger;
     const x = getPxInt(el.style.left) - getPxInt(el.style.right);
     const y = getPxInt(el.style.top) - getPxInt(el.style.bottom);
     return {x, y}
@@ -271,16 +275,14 @@ class App extends Component {
             }
         };
         document.onmouseup = e => {
-            debugger;
-            console.log();
             this.dragging = undefined;
             if (this.dragging) {
                 this.dragging = undefined;
             }
         };
         document.onmousemove = e => {
-            const xTransform = e.movementX;
-            const yTransform = e.movementY;
+            const xTransform = e.movementX / 2;
+            const yTransform = e.movementY / 2;
 
             if (this.dragging) {
                 e.preventDefault();
@@ -497,7 +499,9 @@ class App extends Component {
                             id: 'rotate',
                         }}
                     >
-                        {this.state$.rotate$.seq.map(v => <MenuItem key={v} value={v}>{v}</MenuItem>)}
+                        {this.state$.rotate$.seq.map(v => v ? <MenuItem key={v} value={v}>{v}</MenuItem> : <MenuItem value="">
+                            <em>None</em>
+                        </MenuItem>)}
                     </Select>
                 </div>
                 <div>{this.state.debug}</div>
@@ -517,7 +521,7 @@ class App extends Component {
                     <div>
                         {this.state.inputImages.map(i => <Paper className={"image-box"} key={i.name}>
                             <div style={{position: 'relative'}}>
-                                <div> {i.size.x}px, {i.size.y}px</div>
+                                <div style={{position: 'absolute', top: '-20px'}}> {i.size.x}px, {i.size.y}px</div>
                                 <div style={{
                                     position: 'absolute',
                                     minHeight: '100%',
@@ -529,7 +533,7 @@ class App extends Component {
                                 </div>
                                 <div style={{
                                     position: 'absolute',
-                                    right: 0,
+                                    left: i.size.x + 'px',
                                     minHeight: '100%',
                                     width: '5px',
                                     backgroundColor: 'black'
@@ -547,7 +551,7 @@ class App extends Component {
                                     minWidth: '100%',
                                     height: '5px',
                                     backgroundColor: 'black',
-                                    bottom: '0px'
+                                    top: i.size.y + 'px'
                                 }} className={'crop-slider y'} ref={this.cropYBottom}>
                                 </div>
                                 <img

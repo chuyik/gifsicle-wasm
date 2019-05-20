@@ -43,3 +43,7 @@
   flex-grow: 1;
 }
 
+
+.crop-slider:hover {
+  cursor: pointer;
+}
