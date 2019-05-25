@@ -8,6 +8,8 @@ import Paper from '@material-ui/core/Paper';
 import Button from '@material-ui/core/Button';
 import {MenuItem, Select} from "@material-ui/core";
 import 'roboto-fontface/css/roboto/roboto-fontface.css';
+import SimpleSnackbar, {MessageList} from './ErrorMessages';
+import ErrorMessages from "./ErrorMessages";
 
 const stdOut$ = new Subject();
 const stdErr$ = new Subject();
@@ -204,7 +206,8 @@ class AppState$ {
                 // @ts-ignore
                 const v = prefix.concat(...commandInterface, command.split(' '), postfix);
                 return v;
-            }))
+            }));
+    errorMessages$ = new BehaviorSubject([]);
 }
 
 interface Point {
@@ -260,6 +263,12 @@ class App extends Component {
         this.cropXRight = React.createRef();
         this.cropYTop = React.createRef();
         this.cropYBottom = React.createRef();
+
+        this.state$..subscribe(v => {
+            this.wrapSetState({
+
+            })
+        })
 
         // @ts-ignore
         this.handleCommandChange = s => this.wrapSetState({commandText: s});
@@ -414,6 +423,10 @@ class App extends Component {
         })();
     }
 
+    handleErrorClose(e) {
+        this.
+    }
+
     // @ts-ignore
     async go(c) {
         const outputFiles = await this.execGifsicle(this.state.inputImages, c);
@@ -480,6 +493,9 @@ class App extends Component {
         // @ts-ignore
         return (
             <div className="App">
+                {this.state.bufferedMessages$.map(m =>
+                    <SimpleSnackbar key={m} handleClose={e => e}/>
+                )}
                 <div>
                     <Select
                         value={this.state.reflect$}
