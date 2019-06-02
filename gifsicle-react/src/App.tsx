@@ -5,7 +5,7 @@ import {concatMap, debounceTime, map, scan} from "rxjs/operators";
 import {bufferedStdErr$, bufferedStdOut$, bytesToBase64, getImageDimensions, gImage, run} from './lib/gifsicle-wrapper';
 import {CommandText} from "./lib/command-text";
 import {TextOutput} from "./lib/text-output";
-import {Images, ReadDroppedFile} from "./lib/images";
+import {Images} from "./lib/images";
 
 import 'terminal.css'
 
@@ -114,10 +114,10 @@ class App extends RxComponent {
         // this.cropXLeft.current.
         (async () => {
             /*            bufferedStdErr$.subscribe(errorMessage => this.wrapSetState({errorMessages: this.state.errorMessages.concat([errorMessage])}));*/
-            const resp = await fetch('/An_example_animation_made_with_Pivot.gif');
+            const resp = await fetch('/doom.gif');
             const r = await resp.arrayBuffer();
-            this.state$.editableText$.next('--rotate-90 #0-');
-            this.pushFile(new Uint8Array(r), 'An_example_animation_made_with_Pivot.gif');
+            this.state$.editableText$.next('--optimize --rotate-90 #0- --colors 2');
+            this.pushFile(new Uint8Array(r), 'doom.gif');
         })();
     }
 

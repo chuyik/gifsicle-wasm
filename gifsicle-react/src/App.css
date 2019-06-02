@@ -5,3 +5,7 @@
 .dragover {
     font-weight: bolder;
 }
+.stdout-container, .stderr-container {
+    max-height: 40vh;
+    overflow: auto;
+}
