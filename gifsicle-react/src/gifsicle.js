@@ -96,7 +96,6 @@ Module["preRun"] = function () {
     FS.chdir("/work");
 
     (__ffmpegjs_opts["MEMFS"] || []).forEach(function (file) {
-        console.log(file);
         if (file["name"].match(/\//)) {
             throw new Error("Bad file name");
         }
