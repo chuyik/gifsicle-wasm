@@ -1,8 +1,8 @@
 import {Component, PureComponent} from "react";
 import * as React from "react";
-import {bytesToBase64, getImageDimensions, gImage} from "./gifsicle-wrapper";
 import {InputImage} from "./input-image";
 import {OutputImage} from "./output-image";
+import {gImage, bytesToBase64, getImageDimensions} from "./things";
 
 export function ReadDroppedFile(file: File): Promise<Uint8Array> {
     return new Promise((resolve) => {

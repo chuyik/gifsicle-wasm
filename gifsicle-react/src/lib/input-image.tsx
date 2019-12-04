@@ -1,6 +1,6 @@
 import {Component, PureComponent} from "react";
 import * as React from "react";
-import {gImage} from "./gifsicle-wrapper";
+import {gImage} from "./things";
 
 
 interface myProps {

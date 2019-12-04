@@ -2144,6 +2144,7 @@ function copyTempDouble(ptr) {
           }
           return i;
         }},default_tty_ops:{get_char:function (tty) {
+            debugger;
           if (!tty.input.length) {
             var result = null;
             if (ENVIRONMENT_IS_NODE) {
@@ -4314,6 +4315,7 @@ function copyTempDouble(ptr) {
         // setup /dev/tty and /dev/tty1
         // stderr needs to print output using Module['printErr']
         // so we register a second tty just for it.
+            debugger;
         TTY.register(FS.makedev(5, 0), TTY.default_tty_ops);
         TTY.register(FS.makedev(6, 0), TTY.default_tty1_ops);
         FS.mkdev('/dev/tty', FS.makedev(5, 0));

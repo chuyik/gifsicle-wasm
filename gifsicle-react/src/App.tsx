@@ -2,21 +2,26 @@ import React, {Component} from 'react';
 import './App.css';
 import {BehaviorSubject, combineLatest, Observable} from "rxjs";
 import {concatMap, debounceTime, map, scan} from "rxjs/operators";
-import {bufferedStdErr$, bufferedStdOut$, bytesToBase64, getImageDimensions, gImage, run} from './lib/gifsicle-wrapper';
 import {CommandText} from "./lib/command-text";
 import {TextOutput} from "./lib/text-output";
 import {Images} from "./lib/images";
-
 import 'terminal.css'
+
+/* eslint import/no-webpack-loader-syntax:0 */
+
+// import {bufferedStdErr$, bufferedStdOut$, bytesToBase64, getImageDimensions, gImage, run} from './lib/gifsicle-wrapper'
+// @ts-ignore
+import MyWorker from 'worker-loader?name=dist/[name].js!./lib/gifsicle-wrapper'
+import {bufferedStdOut$, bufferedStdErr$, gImage, bytesToBase64, getImageDimensions} from './lib/things';
+
+// import MyWorker = require("worker-loader?name=dist/[name].js!./worker");
 
 
 class ObservableClass {
     editableText$ = new BehaviorSubject('');
-    // @ts-ignore
     stdOutLines$ = bufferedStdOut$.pipe(scan<string, string[]>((oldLines: string[], newLine: string) => {
         return oldLines.concat(newLine);
     }, []));
-    // @ts-ignore
     stdErrLines$ = bufferedStdErr$.pipe(scan<string, string[]>((oldLines: string[], newLine: string) => {
         return oldLines.concat(newLine);
     }, []));
@@ -32,6 +37,13 @@ class ObservableClass {
     inputText$: Observable<string>;
 
     constructor() {
+        // @ts-ignore
+        const worker = new MyWorker();
+        // @ts-ignore
+        worker.onmessage = e => { console.log('i got something back?'); };
+        // @ts-ignore
+        worker.postMessage('yeet?');
+
         this.inputCommand$ = this.inputImages$.pipe(map(images => {
             const commands: string[] = [];
             images.forEach(i => {
@@ -55,14 +67,16 @@ class ObservableClass {
                     const v = inputCommands.concat(commandText.split(' '), defaultOutputCommand);
                     return v;
                 }));
-        this.outputImages$ =
-            combineLatest(this.inputImages$, this.debouncedCommandArray$).pipe(
+        // TODO fix
+        // @ts-ignore
+        this.outputImages$ = combineLatest(this.inputImages$, this.debouncedCommandArray$).pipe(
                 debounceTime(500),
                 concatMap(async ([inputImages, commands]) => {
                     if (!inputImages.length || !commands.join('')) {
                         return [];
                     }
-                    return await run(inputImages, commands);
+                    // TODO Fix
+                    // return await this.worker.postMessage({inputImages, commands});
                 })
             );
 
@@ -94,6 +108,8 @@ class RxComponent extends Component {
     connect() {
         Object.entries(this.state$)
             .map(([key, obs$]) => {
+                console.log(key);
+
                 obs$.subscribe((v: any) => {
                     /*                    if (key == 'stdErrLines$') {
                                             debugger;console.log();
@@ -113,7 +129,6 @@ class App extends RxComponent {
     componentDidMount() {
         // this.cropXLeft.current.
         (async () => {
-            /*            bufferedStdErr$.subscribe(errorMessage => this.wrapSetState({errorMessages: this.state.errorMessages.concat([errorMessage])}));*/
             const resp = await fetch('/doom.gif');
             const r = await resp.arrayBuffer();
             this.state$.editableText$.next('--optimize --rotate-90 #0- --colors 2');
@@ -129,14 +144,7 @@ class App extends RxComponent {
 
     private async pushFile(bytes: Uint8Array, name: string) {
         const base64 = await bytesToBase64(bytes);
-        this.state$.inputImages$.next(
-            this.state$.inputImages$.getValue()
-                .concat({
-                    name: name,
-                    data: bytes,
-                    base64,
-                    size: await getImageDimensions(base64)
-                }));
+        this.state$.inputImages$.next( this.state$.inputImages$.getValue() .concat({ name: name, data: bytes, base64, size: await getImageDimensions(base64) }));
     }
 
 
@@ -156,12 +164,12 @@ class App extends RxComponent {
                 <Images
                     inputImages={this.state.inputImages$}
                     outputImages={this.state.outputImages$}
-                    imageClose={(i: gImage) => {
+                    imageClose={(i: any) => {
                         this.state$.inputImages$.next(
                             this.state$.inputImages$.getValue().filter(e => i != e)
                         )
                     }}
-                    imageOpen={(i: gImage) => {
+                    imageOpen={(i: any) => {
                         this.state$.inputImages$.next([i]);
                     }}
                 />
